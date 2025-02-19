@@ -1,0 +1,34 @@
+repos:
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v19.1.7
+    hooks:
+      - id: clang-format
+        args: ["-i"]
+  
+  - repo: https://github.com/cpplint/cpplint
+    rev: 2.0.0
+    hooks:
+      - id: cpplint
+        args: ["--filter=-whitespace,-readability/todo"]
+  
+  - repo: local
+    hooks:
+      - id: clang-tidy
+        name: Clang-Tidy
+        entry: clang-tidy
+        language: system
+        types: [c, c++]
+        args: ["--checks=*", "--fix"]
+  
+      - id: cppcheck
+        name: Cppcheck
+        entry: cppcheck
+        language: system
+        types: [c, c++]
+        args: ["--enable=all", "--error-exitcode=1"]
+  
+      - id: iwyu
+        name: Include What You Use
+        entry: include-what-you-use
+        language: system
+        types: [c, c++]
