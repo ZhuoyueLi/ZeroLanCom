@@ -67,41 +67,27 @@ LanComNode(const std::string& name,
         }
     }
 
-    // template<typename RequestType, typename ResponseType>
-    // void registerServiceHandler(
-    //     const std::string& service_name,
-    //     std::function<ResponseType(const RequestType&)> handler_func)
-    // {
-    //     serviceManager.registerHandler(service_name, handler_func);
-    //     localInfo.registerServices(service_name, serviceManager.service_port_);
-    // }
-
-    // template<typename RequestType>
-    // void registerServiceHandler(
-    //     const std::string& service_name,
-    //     std::function<void(const RequestType&)> handler_func)
-    // {
-    //     serviceManager.registerHandler(service_name, handler_func);
-    //     localInfo.registerServices(service_name, serviceManager.service_port_);
-    // }
-
-    // template<typename ResponseType>
-    // void registerServiceHandler(
-    //     const std::string& service_name,
-    //     std::function<ResponseType()> handler_func)
-    // {
-    //     serviceManager.registerHandler(service_name, handler_func);
-    //     localInfo.registerServices(service_name, serviceManager.service_port_);
-    // }
-
-    // template<typename RequestType, typename ResponseType>
-    void registerServiceHandler(
-        const std::string& service_name,
-        std::function<void()> handler_func)
+    template <typename HandlerT>
+    void registerServiceHandler(const std::string& name, HandlerT handler)
     {
-        serviceManager.registerHandler(service_name, handler_func);
-        localInfo.registerServices(service_name, serviceManager.service_port_);
-        LOG_INFO("Service {} registered at port {}", service_name, serviceManager.service_port_);
+        serviceManager.registerHandler(name, handler);
+        localInfo.registerServices(name, serviceManager.service_port_);
+
+        LOG_INFO("Service {} registered at port {}",
+                name, serviceManager.service_port_);
+    }
+
+    template <typename ClassT, typename HandlerT>
+    void registerServiceHandler(
+        const std::string& name,
+        ClassT* instance,
+        HandlerT handler)
+    {
+        serviceManager.registerHandler(name, instance, handler);
+        localInfo.registerServices(name, serviceManager.service_port_);
+
+        LOG_INFO("Service {} registered at port {}",
+                name, serviceManager.service_port_);
     }
 
     void registerTopic(

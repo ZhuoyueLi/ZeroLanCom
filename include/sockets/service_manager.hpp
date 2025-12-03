@@ -74,7 +74,6 @@ public:
     }
 
 
-
     template <typename ClassT, typename ResponseType>
     void registerHandler(const std::string& name, ClassT* instance,
                         ResponseType (ClassT::*method)()) {
@@ -103,6 +102,46 @@ public:
             RequestType arg = oh.get().as<RequestType>();
             (instance->*method)(arg);
             return {};
+        };
+    }
+
+    template <typename ClassT>
+    void registerHandler(const std::string& name,
+                        ClassT* instance,
+                        void (ClassT::*method)()) {
+        handlers_[name] = [instance, method](const ByteView&) -> std::vector<uint8_t> {
+            (instance->*method)();
+            return {};
+        };
+    }
+
+
+    template <typename RequestType, typename ResponseType>
+    void registerHandler(const std::string& name,
+                        const std::function<ResponseType(const RequestType&)>& func)
+    {
+        handlers_[name] = func;
+    }
+
+    template <typename RequestType>
+    void registerHandler(const std::string& name,
+                        const std::function<void(const RequestType&)>& func)
+    {
+        handlers_[name] = [func](const ByteView&) -> std::vector<uint8_t> {
+            func();
+            return {};
+        };
+    }
+
+    template <typename ResponseType>
+    void registerHandler(const std::string& name,
+                        const std::function<ResponseType()>& func)
+    {
+        handlers_[name] = [func](const ByteView&) -> std::vector<uint8_t> {
+            ResponseType ret = func();
+            msgpack::sbuffer sbuf;
+            msgpack::pack(sbuf, ret);
+            return std::vector<uint8_t>(sbuf.data(), sbuf.data() + sbuf.size());
         };
     }
 

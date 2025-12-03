@@ -1,6 +1,6 @@
 #include "lancom_node.hpp"
 #include "utils/logger.hpp"
-#include "sockets/publisher_hpp.hpp"
+#include "sockets/publisher.hpp"
 
 class TestClass {
 public:
