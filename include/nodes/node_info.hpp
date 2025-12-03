@@ -5,6 +5,7 @@
 #include <arpa/inet.h>
 #include "utils/binary_codec.hpp"
 #include "utils/message.hpp"
+#include "utils/logger.hpp"
 // =======================
 // SocketInfo
 // =======================
@@ -88,6 +89,22 @@ struct NodeInfo {
 
         return ni;
     }
+
+    void printNodeInfo() const {
+        LOG_INFO("NodeID: {}", nodeID);
+        LOG_INFO("InfoID: {}", infoID);
+        LOG_INFO("Name: {}", name);
+        LOG_INFO("IP: {}", ip);
+        LOG_INFO("Topics:");
+        for (const auto& t : topics) {
+            LOG_INFO("  - {}:{}", t.name, t.port);
+        }
+        LOG_INFO("Services:");
+        for (const auto& s : services) {
+            LOG_INFO("  - {}:{}", s.name, s.port);
+        }
+    }
+
 };
 
 struct LocalNodeInfo {
@@ -105,6 +122,16 @@ struct LocalNodeInfo {
 
     std::vector<uint8_t> createHeartbeat() const {
         return nodeInfo.encode();
+    }
+
+    void registerTopic(const std::string& name, uint16_t port) {
+        nodeInfo.topics.push_back(SocketInfo{name, port});
+        nodeInfo.infoID++;
+    }
+
+    void registerServices(const std::string& name, uint16_t port) {
+        nodeInfo.services.push_back(SocketInfo{name, port});
+        nodeInfo.infoID++;
     }
 };
 }

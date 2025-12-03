@@ -101,9 +101,11 @@ public:
             // spdlog logging outside lock since it has its own internal locking
             if (is_new) {
                 LOG_INFO("Node {} added via heartbeat", nodeInfo.name);
+                nodeInfo.printNodeInfo();
             }
             else if (info_changed) {
                 LOG_INFO("Node {} updated via heartbeat", nodeInfo.name);
+                nodeInfo.printNodeInfo();
             }
         }
         catch (const std::exception& e) {

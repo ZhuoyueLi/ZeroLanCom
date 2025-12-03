@@ -87,3 +87,17 @@ struct BinReader {
         return s;
     }
 };
+
+std::string decode(ByteView payload) {
+    constexpr size_t kMaxLen = 1024;
+
+    if (!payload.data || payload.size == 0)
+        return std::string();
+
+    size_t real_len = 0;
+    while (real_len < payload.size && real_len < kMaxLen && payload.data[real_len] != 0) {
+        ++real_len;
+    }
+
+    return std::string(reinterpret_cast<const char*>(payload.data), real_len);
+}

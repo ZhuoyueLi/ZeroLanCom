@@ -28,6 +28,8 @@ endif()
 # External dependencies
 # ----------------------------
 find_package(spdlog REQUIRED)
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(ZMQ REQUIRED libzmq)
 
 
 # ----------------------------
@@ -53,7 +55,7 @@ target_include_directories(lancom PUBLIC
 
 add_executable(main ${PROJECT_SOURCE_DIR}/src/lancom.cpp)
 target_include_directories(main PRIVATE ${PROJECT_SOURCE_DIR}/include)
-target_link_libraries(main PRIVATE spdlog::spdlog)
+target_link_libraries(main PRIVATE ${ZMQ_LIBRARIES} spdlog::spdlog)
 
 # # ----------------------------
 # # Examples (optional)

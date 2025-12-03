@@ -33,31 +33,35 @@ public:
         addr.sin_addr.s_addr = inet_addr(group.c_str());
     }
 
-    void send(const std::vector<uint8_t>& msg) {
-        sendto(sock, msg.data(), msg.size(), 0,
-               (sockaddr*)&addr, sizeof(addr));
-    }
-
+    
     void start(const LocalNodeInfo& localInfo) {
         multicastSendThread = std::thread([this, &localInfo](){
+            running_ = true;
+            // LOG_INFO("Multicast sender started.");
             while (running_) {
                 auto msg = localInfo.createHeartbeat();
                 send(msg);
                 std::this_thread::sleep_for(std::chrono::seconds(1));
+                LOG_TRACE("Sent multicast heartbeat from node {}", localInfo.nodeID);
             }
         });
     }
-
+    
     void stop() {
         running_ = false;
         if (multicastSendThread.joinable()) {
             multicastSendThread.join();
         }
     }
-
-
+    
+private:
+    
     std::thread multicastSendThread;
     std::atomic<bool> running_;
+    void send(const std::vector<uint8_t>& msg) {
+        sendto(sock, msg.data(), msg.size(), 0,
+               (sockaddr*)&addr, sizeof(addr));
+    }
 };
 
 
@@ -95,7 +99,7 @@ public:
             std::vector<uint8_t> buf(256);  // safer than uint8_t[128]
             sockaddr_in src{};
             socklen_t slen = sizeof(src);
-
+            // LOG_INFO("Multicast receiver started.");
             while (running_) {
                 int n = recvfrom(sock_, buf.data(), (int)buf.size(), 0,
                                 (sockaddr*)&src, &slen);           
@@ -103,6 +107,7 @@ public:
                 std::string ip = inet_ntoa(src.sin_addr);
                 NodeInfo info = NodeInfo::decode(ByteView{buf.data(), (size_t)n});
                 info.ip = ip;
+                LOG_TRACE("Received multicast heartbeat from node {} at IP {}", info.nodeID, ip);
                 nodeManager.process_heartbeat(info);
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }

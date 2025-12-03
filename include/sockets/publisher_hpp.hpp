@@ -1,77 +1,52 @@
-// #pragma once
+#pragma once
 
-// #include <memory>
-// #include <string>
-// #include <unordered_map>
+#include <memory>
+#include <string>
+#include <unordered_map>
+#include <zmq.hpp>
 
-// #include "lancom/types.hpp"
+#include <msgpack.hpp>
 
-// namespace lancom {
+#include "lancom_node.hpp"
 
-// // Forward declaration
-// class LanComNode;
+namespace lancom {
 
-// // Base class for socket implementations
-// class AbstractLanComSocket {
-// public:
-//     AbstractLanComSocket(
-//         const std::string& name,
-//         ComponentTypeEnum component_type,
-//         bool with_local_namespace = true);
+template<typename T>
+class Publisher {
+public:
+    // Create a new publisher
+    Publisher(
+        const std::string& topic_name,
+        bool with_local_namespace = false) {
+        std::string full_topic_name = with_local_namespace ?
+            "lc.local." + topic_name : topic_name;
+        socket_ = std::make_unique<zmq::socket_t>(
+            ZmqContext::instance(), zmq::socket_type::pub);
+        const std::string address = LanComNode::instance().GetIP();
+        socket_->bind("tcp://" + address + ":0");
+        LOG_INFO("[Publisher] Publisher for topic '{}' bound to port {}",
+                 full_topic_name, get_bound_port(*socket_));
+        port_ = get_bound_port(*socket_);
+        LanComNode::instance().registerTopic(
+            full_topic_name, static_cast<uint16_t>(port_)
+    );
+    };
+    // Destructor
+    ~Publisher() = default;
     
-//     virtual ~AbstractLanComSocket() = default;
+    // Publish methods for different types
+    void publish(const T& msg) {
+        msgpack::sbuffer sbuf;
+        msgpack::pack(sbuf, msg);
+        socket_->send(zmq::buffer(sbuf.data(), sbuf.size()), zmq::send_flags::none);
+    };
     
-//     // Non-copyable
-//     AbstractLanComSocket(const AbstractLanComSocket&) = delete;
-//     AbstractLanComSocket& operator=(const AbstractLanComSocket&) = delete;
+    // Implement shutdown
+    void on_shutdown();
     
-//     // Shutdown the socket
-//     void shutdown();
-    
-//     // Get socket info
-//     const SocketInfo& get_info() const;
+    // Socket reference
+    std::unique_ptr<zmq::socket_t> socket_;
+    int port_;
+};
 
-// protected:
-//     // Set up the socket with ZMQ
-//     void set_up_socket(zmq::socket_t& zmq_socket);
-    
-//     // Shutdown implementation
-//     virtual void on_shutdown() = 0;
-    
-//     // Socket properties
-//     std::string name_;
-//     SocketInfo info_;
-//     bool running_;
-    
-//     // Reference to parent node
-//     std::shared_ptr<LanComNode> node_;
-// };
-
-// // Publisher socket implementation
-// class Publisher : public AbstractLanComSocket {
-// public:
-//     // Create a new publisher
-//     explicit Publisher(
-//         const std::string& topic_name,
-//         bool with_local_namespace = false);
-    
-//     // Destructor
-//     ~Publisher() override = default;
-    
-//     // Publish methods for different types
-//     void publish_bytes(const BytesMessage& bytes_msg);
-//     void publish_string(const std::string& msg);
-//     void publish_dict(const std::unordered_map<std::string, std::string>& data);
-    
-// protected:
-//     // Implement shutdown
-//     void on_shutdown() override;
-    
-//     // Asynchronous send
-//     Task<void> send_bytes_async(const BytesMessage& bytes_msg);
-    
-//     // Socket reference
-//     zmq::socket_t& socket_;
-// };
-
-// } // namespace lancom
+} // namespace lancom
