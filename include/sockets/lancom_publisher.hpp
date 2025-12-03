@@ -12,10 +12,10 @@
 namespace lancom {
 
 template<typename T>
-class Publisher {
+class LanComPublisher {
 public:
     // Create a new publisher
-    Publisher(
+    LanComPublisher(
         const std::string& topic_name,
         bool with_local_namespace = false) {
         std::string full_topic_name = with_local_namespace ?
@@ -24,7 +24,7 @@ public:
             ZmqContext::instance(), zmq::socket_type::pub);
         const std::string address = LanComNode::instance().GetIP();
         socket_->bind("tcp://" + address + ":0");
-        LOG_INFO("[Publisher] Publisher for topic '{}' bound to port {}",
+        LOG_INFO("[LanComPublisher] Publisher for topic '{}' bound to port {}",
                  full_topic_name, get_bound_port(*socket_));
         port_ = get_bound_port(*socket_);
         LanComNode::instance().registerTopic(
@@ -32,7 +32,7 @@ public:
     );
     };
     // Destructor
-    ~Publisher() = default;
+    ~LanComPublisher() = default;
     
     // Publish methods for different types
     void publish(const T& msg) {
