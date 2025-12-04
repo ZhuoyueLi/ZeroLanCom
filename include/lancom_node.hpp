@@ -3,6 +3,7 @@
 #include "nodes/node_info.hpp"
 #include "nodes/multicast.hpp"
 #include "sockets/service_manager.hpp"
+#include "sockets/subscriber_manager.hpp"
 // #include "sockets/zmq_request_helper.hpp"
 #include <string>
 #include <thread>
@@ -37,11 +38,13 @@ LanComNode(const std::string& name,
     : localInfo(name, ip),
     mcastSender(group, groupPort, ip),
     mcastReceiver(group, groupPort, ip),
-    serviceManager(ip)
+    serviceManager(ip),
+    subscriberManager(nodesManager)
     {
         mcastSender.start(localInfo);
         mcastReceiver.start(nodesManager);
         serviceManager.start();
+        subscriberManager.start();
     }
 
     ~LanComNode() {
@@ -67,23 +70,23 @@ LanComNode(const std::string& name,
         }
     }
 
+    void sleep(int ms) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+    }
+
     template <typename HandlerT>
     void registerServiceHandler(const std::string& name, HandlerT handler)
     {
-        serviceManager.registerHandler(name, handler);
+        serviceManager.registerHandler(name, std::function(handler));
         localInfo.registerServices(name, serviceManager.service_port_);
 
-        LOG_INFO("Service {} registered at port {}",
-                name, serviceManager.service_port_);
+        LOG_INFO("Service {} registered at port {}", name, serviceManager.service_port_);
     }
 
-    template <typename ClassT, typename HandlerT>
-    void registerServiceHandler(
-        const std::string& name,
-        ClassT* instance,
-        HandlerT handler)
+    template <typename HandlerT, typename ClassT>
+    void registerServiceHandler(const std::string& name, HandlerT handler, ClassT* instance)
     {
-        serviceManager.registerHandler(name, instance, handler);
+        serviceManager.registerHandler(name, std::bind(handler, instance));
         localInfo.registerServices(name, serviceManager.service_port_);
 
         LOG_INFO("Service {} registered at port {}",
@@ -98,22 +101,28 @@ LanComNode(const std::string& name,
         LOG_INFO("Topic {} registered at port {}", topic_name, port);
     }
 
+    template <typename MessageType>
+    void registerSubscriber(
+        const std::string& topic_name,
+        std::function<void(const MessageType&)> callback)
+    {
+        subscriberManager.registerTopicSubscriber<MessageType>(topic_name, callback);
+    }
+
+
     const std::string& GetIP() const {
         return localInfo.nodeInfo.ip;
     }
 
-private:
-    
-    LocalNodeInfo localInfo;
     NodeInfoManager nodesManager;
+
+    private:
+    LocalNodeInfo localInfo;
     
     MulticastSender mcastSender;
     MulticastReceiver mcastReceiver;
     ServiceManager serviceManager;
-
-    std::thread multicastSendThread;
-    std::thread multicastRecvThread;
-    std::thread serviceThread;
+    SubscriberManager subscriberManager;
     
     bool running = true;
     int startZmqServicePort() { return 7000; }

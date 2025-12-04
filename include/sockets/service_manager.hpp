@@ -24,7 +24,7 @@ public:
         : res_socket_(ZmqContext::instance(), zmq::socket_type::rep) {
         res_socket_.set(zmq::sockopt::rcvtimeo, SOCKET_TIMEOUT_MS);
         res_socket_.bind("tcp://" + ip + ":0");
-        service_port_ = get_bound_port(res_socket_);
+        service_port_ = getBoundPort(res_socket_);
         LOG_INFO("[ServiceManager] ServiceManager bound to port {}", service_port_);
     };
 
@@ -45,13 +45,82 @@ public:
         }
     }
 
-    template <typename ClassT, typename RequestType, typename ResponseType>
+    // template <typename ClassT, typename RequestType, typename ResponseType>
+    // void registerHandler(const std::string& name,
+    //                     ClassT* instance,
+    //                     ResponseType (ClassT::*method)(const RequestType&))
+    // {
+    //     handlers_[name] = [instance, method](const ByteView& payload)
+    //         -> std::vector<uint8_t>
+    //     {
+    //         // --------- Decode payload using msgpack ---------
+    //         msgpack::object_handle oh = msgpack::unpack(
+    //             reinterpret_cast<const char*>(payload.data),
+    //             payload.size
+    //         );
+
+    //         RequestType req = oh.get().as<RequestType>();
+
+    //         // --------- Invoke member function ---------
+    //         ResponseType resp = (instance->*method)(req);
+
+    //         // --------- Encode response using msgpack ---------
+    //         msgpack::sbuffer sbuf;
+    //         msgpack::pack(sbuf, resp);
+
+    //         // Convert sbuffer to std::vector<uint8_t>
+    //         return std::vector<uint8_t>(sbuf.data(), sbuf.data() + sbuf.size());
+    //     };
+    // }
+
+
+    // template <typename ClassT, typename ResponseType>
+    // void registerHandler(const std::string& name, ClassT* instance,
+    //                     ResponseType (ClassT::*method)()) {
+    //     handlers_[name] = [instance, method](const ByteView&) -> std::vector<uint8_t> {
+    //         ResponseType ret = (instance->*method)();
+    //         msgpack::sbuffer sbuf;
+    //         msgpack::pack(sbuf, ret);
+    //         return std::vector<uint8_t>(sbuf.data(), sbuf.data() + sbuf.size());
+    //     };
+    // }
+
+    // // method: void func(const RequestType&)
+    // template <typename ClassT, typename RequestType>
+    // void registerHandler(const std::string& name,
+    //                     ClassT* instance,
+    //                     void (ClassT::*method)(const RequestType&)) {
+
+    //     handlers_[name] = [instance, method](const ByteView& payload)
+    //         -> std::vector<uint8_t>
+    //     {
+    //         // Decode payload using msgpack
+    //         msgpack::object_handle oh = msgpack::unpack(
+    //             reinterpret_cast<const char*>(payload.data),
+    //             payload.size
+    //         );
+    //         RequestType arg = oh.get().as<RequestType>();
+    //         (instance->*method)(arg);
+    //         return {};
+    //     };
+    // }
+
+    // template <typename ClassT>
+    // void registerHandler(const std::string& name,
+    //                     ClassT* instance,
+    //                     void (ClassT::*method)()) {
+    //     handlers_[name] = [instance, method](const ByteView&) -> std::vector<uint8_t> {
+    //         (instance->*method)();
+    //         return {};
+    //     };
+    // }
+
+
+    template <typename RequestType, typename ResponseType>
     void registerHandler(const std::string& name,
-                        ClassT* instance,
-                        ResponseType (ClassT::*method)(const RequestType&))
+                        const std::function<ResponseType(const RequestType&)>& func)
     {
-        handlers_[name] = [instance, method](const ByteView& payload)
-            -> std::vector<uint8_t>
+        handlers_[name] = [func](const ByteView& payload) -> std::vector<uint8_t>
         {
             // --------- Decode payload using msgpack ---------
             msgpack::object_handle oh = msgpack::unpack(
@@ -62,7 +131,7 @@ public:
             RequestType req = oh.get().as<RequestType>();
 
             // --------- Invoke member function ---------
-            ResponseType resp = (instance->*method)(req);
+            ResponseType resp = func(req);
 
             // --------- Encode response using msgpack ---------
             msgpack::sbuffer sbuf;
@@ -71,56 +140,6 @@ public:
             // Convert sbuffer to std::vector<uint8_t>
             return std::vector<uint8_t>(sbuf.data(), sbuf.data() + sbuf.size());
         };
-    }
-
-
-    template <typename ClassT, typename ResponseType>
-    void registerHandler(const std::string& name, ClassT* instance,
-                        ResponseType (ClassT::*method)()) {
-        handlers_[name] = [instance, method](const ByteView&) -> std::vector<uint8_t> {
-            ResponseType ret = (instance->*method)();
-            msgpack::sbuffer sbuf;
-            msgpack::pack(sbuf, ret);
-            return std::vector<uint8_t>(sbuf.data(), sbuf.data() + sbuf.size());
-        };
-    }
-
-    // method: void func(const RequestType&)
-    template <typename ClassT, typename RequestType>
-    void registerHandler(const std::string& name,
-                        ClassT* instance,
-                        void (ClassT::*method)(const RequestType&)) {
-
-        handlers_[name] = [instance, method](const ByteView& payload)
-            -> std::vector<uint8_t>
-        {
-            // Decode payload using msgpack
-            msgpack::object_handle oh = msgpack::unpack(
-                reinterpret_cast<const char*>(payload.data),
-                payload.size
-            );
-            RequestType arg = oh.get().as<RequestType>();
-            (instance->*method)(arg);
-            return {};
-        };
-    }
-
-    template <typename ClassT>
-    void registerHandler(const std::string& name,
-                        ClassT* instance,
-                        void (ClassT::*method)()) {
-        handlers_[name] = [instance, method](const ByteView&) -> std::vector<uint8_t> {
-            (instance->*method)();
-            return {};
-        };
-    }
-
-
-    template <typename RequestType, typename ResponseType>
-    void registerHandler(const std::string& name,
-                        const std::function<ResponseType(const RequestType&)>& func)
-    {
-        handlers_[name] = func;
     }
 
     template <typename RequestType>
@@ -166,7 +185,7 @@ public:
             // std::vector<uint8_t> detail = protocol::encode(err);
             // out.insert(out.end(), detail.begin(), detail.end());
             // response = std::move(out);
-            // result_code = protocol::RequestResultCode::FAIL;
+            response.code = LanComResponseCode::FAIL;
             return;
         }
         response.code = LanComResponseCode::SUCCESS;
@@ -192,7 +211,7 @@ public:
         while (is_running) {
             zmq::message_t service_name_msg;
             if (!res_socket_.recv(service_name_msg, zmq::recv_flags::none)) continue;
-            LOG_TRACE("[FrankaArmProxy] Received service request frame of size {} bytes.", service_name_msg.size());
+            LOG_TRACE("[ServiceManager] Received service request frame of size {} bytes.", service_name_msg.size());
             std::string service_name = decode(ByteView{
                 static_cast<const uint8_t*>(service_name_msg.data()),
                 service_name_msg.size()
@@ -200,27 +219,27 @@ public:
 
 
             if (!service_name_msg.more()) {
-                LOG_WARN("[FrankaArmProxy] Warning: No payload frame received for service request.");
+                LOG_WARN("[ServiceManager] Warning: No payload frame received for service request.");
                 continue; // Skip this iteration if no payload
             }
             zmq::message_t payload_msg;
             if (!res_socket_.recv(payload_msg, zmq::recv_flags::none)) continue;
-            LOG_TRACE("[FrankaArmProxy] Received payload frame of size {} bytes.", payload_msg.size());
+            LOG_TRACE("[ServiceManager] Received payload frame of size {} bytes.", payload_msg.size());
             ByteView payload{
                 static_cast<const uint8_t*>(payload_msg.data()),
                 payload_msg.size()
             };
             if (payload_msg.more()) {
-                LOG_WARN("[FrankaArmProxy] Warning: More message frames received than expected.");
+                LOG_WARN("[ServiceManager] Warning: More message frames received than expected.");
             }
-            LOG_INFO("[FrankaArmProxy] Received request {}", service_name);
+            LOG_INFO("[ServiceManager] Received request {}", service_name);
             //std::string response;
             LanComResponse response;
             handleRequest(service_name, payload, response);
             //send response
             res_socket_.send(zmq::buffer(service_name), zmq::send_flags::sndmore);
             res_socket_.send(zmq::buffer(response.payload), zmq::send_flags::none);
-            LOG_INFO("[FrankaArmProxy] Sent response payload of {} bytes.", response.payload.size());
+            LOG_INFO("[ServiceManager] Sent response payload of {} bytes.", response.payload.size());
         }
     }
 

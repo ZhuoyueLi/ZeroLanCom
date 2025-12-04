@@ -108,10 +108,10 @@ public:
                 NodeInfo info = NodeInfo::decode(ByteView{buf.data(), (size_t)n});
                 info.ip = ip;
                 LOG_TRACE("Received multicast heartbeat from node {} at IP {}", info.nodeID, ip);
-                nodeManager.process_heartbeat(info);
+                nodeManager.processHeartbeat(info);
                 std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
-
+            LOG_INFO("Multicast receiver stopped.");
         });
     }
 

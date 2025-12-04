@@ -7,7 +7,8 @@
 
 #include <msgpack.hpp>
 
-#include "lancom_node.hpp"
+#include "utils/zmq_utils.hpp"
+#include "utils/logger.hpp"
 
 namespace lancom {
 
@@ -25,8 +26,8 @@ public:
         const std::string address = LanComNode::instance().GetIP();
         socket_->bind("tcp://" + address + ":0");
         LOG_INFO("[LanComPublisher] Publisher for topic '{}' bound to port {}",
-                 full_topic_name, get_bound_port(*socket_));
-        port_ = get_bound_port(*socket_);
+                 full_topic_name, getBoundPort(*socket_));
+        port_ = getBoundPort(*socket_);
         LanComNode::instance().registerTopic(
             full_topic_name, static_cast<uint16_t>(port_)
     );

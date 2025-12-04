@@ -12,7 +12,7 @@ public:
     ZmqContext() = delete;
 };
 
-int get_bound_port(zmq::socket_t& socket) {
+int getBoundPort(zmq::socket_t& socket) {
     // fetch endpoint string using modern cppzmq API
     std::string endpoint = socket.get(zmq::sockopt::last_endpoint);
 

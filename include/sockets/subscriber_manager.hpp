@@ -6,8 +6,10 @@
 #include <vector>
 #include <mutex>
 #include <zmq.hpp>
+#include <fmt/format.h>
 #include "utils/logger.hpp"
 #include "utils/binary_codec.hpp"
+#include "utils/zmq_utils.hpp"
 #include "nodes/node_info_manager.hpp"
 
 namespace lancom {
@@ -15,37 +17,52 @@ namespace lancom {
 class SubscriberManager {
 public:
     SubscriberManager(NodeInfoManager& node_info_mgr)
-        : context_(ZmqContext::instance()),
-          node_info_mgr_(node_info_mgr) {}
+        : node_info_mgr_(node_info_mgr) {
+        node_info_mgr_.registerUpdateCallback(
+            std::bind(&SubscriberManager::updateTopicSubscriber, this, std::placeholders::_1)
+        );
+    }
 
     ~SubscriberManager() {
         stop();
-        clearSubscribers();
     }
 
     // ---------------------------------------------------------------------
     // Register topic-subscriber: automatically discover all publishers
     // ---------------------------------------------------------------------
+    template<typename MessageType>
     void registerTopicSubscriber(
         const std::string& topicName,
-        const std::function<void(const ByteView&)>& callback)
+        const std::function<void(const MessageType&)>& callback)
     {
         std::lock_guard<std::mutex> lock(mutex_);
 
         Subscriber sub;
         sub.topicName = topicName;
-        sub.callback = callback;
-        sub.socket = std::make_unique<zmq::socket_t>(context_, zmq::socket_type::sub);
+        sub.callback = [callback](const ByteView& view) {
+            // decode message
+            msgpack::object_handle oh = msgpack::unpack(
+                reinterpret_cast<const char*>(view.data),
+                view.size
+            );
+            MessageType msg;
+            oh.get().convert(msg);
+            // call user callback
+            callback(msg);
+        };
+        sub.socket = std::make_unique<zmq::socket_t>(ZmqContext::instance(), zmq::socket_type::sub);
         sub.socket->set(zmq::sockopt::subscribe, "");
 
         // initial URL list
-        sub.publisherURLs = findTopicURLs(topicName);
-        for (auto& url : sub.publisherURLs) {
+        auto urls = findTopicURLs(topicName);
+        auto& subURLs = sub.publisherURLs;
+        for (auto& url : urls) {
+            if (std::find(subURLs.begin(), subURLs.end(), url) != subURLs.end())
+                continue;
             sub.socket->connect(url);
             LOG_INFO("[SubscriberManager] '{}' connected to {}", topicName, url);
         }
-
-        subscribers_[topicName] = std::move(sub);
+        subscribers_.push_back(std::move(sub));
     }
 
     // ---------------------------------------------------------------------
@@ -53,10 +70,9 @@ public:
     // ---------------------------------------------------------------------
     std::vector<std::string> findTopicURLs(const std::string& topicName) {
         std::vector<std::string> urls;
-
-        auto infos = node_info_mgr_.get_publisher_info(topicName);
+        auto infos = node_info_mgr_.getPublisherInfo(topicName);
         for (auto& t : infos) {
-            urls.push_back("tcp://" + t.ip + ":" + std::to_string(t.port));
+            urls.push_back(fmt::format("tcp://{}:{}", t.ip, t.port));
         }
         return urls;
     }
@@ -64,29 +80,23 @@ public:
     // ---------------------------------------------------------------------
     // Called by NodeInfoManager when NodeInfo updated
     // ---------------------------------------------------------------------
-    void updateTopicSubscriber(const std::string& topicName) {
+    void updateTopicSubscriber(const NodeInfo& nodeInfo) {
         std::lock_guard<std::mutex> lock(mutex_);
-
-        auto it = subscribers_.find(topicName);
-        if (it == subscribers_.end()) return;
-
-        auto newURLs = findTopicURLs(topicName);
-        auto& sub = it->second;
-
-        // Compare: if identical — do nothing
-        if (newURLs == sub.publisherURLs) return;
-
-        // rebuild socket
-        sub.socket->close();
-        sub.socket = std::make_unique<zmq::socket_t>(context_, zmq::socket_type::sub);
-        sub.socket->set(zmq::sockopt::subscribe, "");
-
-        for (auto& url : newURLs) {
-            sub.socket->connect(url);
-            LOG_INFO("[SubscriberManager] '{}' reconnected to {}", topicName, url);
+        for (auto& topic : nodeInfo.topics) {
+            for (auto it = subscribers_.begin(); it != subscribers_.end(); ++it) {
+                if (it->topicName != topic.name) {
+                    continue;
+                }
+                std::string url = fmt::format("tcp://{}:{}", topic.ip, topic.port);
+                auto& subURLs = it->publisherURLs;
+                if (std::find(subURLs.begin(), subURLs.end(), url) != subURLs.end()) {
+                    continue; // already connected
+                }
+                it->socket->connect(url);
+                LOG_INFO("[SubscriberManager] '{}' connected to {}", topic.name, url);
+                subURLs.push_back(url);
+            }
         }
-
-        sub.publisherURLs = newURLs;
     }
 
     // ---------------------------------------------------------------------
@@ -108,61 +118,42 @@ private:
         std::unique_ptr<zmq::socket_t> socket;
     };
 
-    // ---------------------------------------------------------------------
-    // Poll loop
-    // ---------------------------------------------------------------------
     void pollLoop() {
+        LOG_INFO("[SubscriberManager] Poll thread started.");
         while (is_running_) {
+
             std::vector<zmq::pollitem_t> poll_items;
-            std::vector<std::string> names;
-
+            std::vector<Subscriber*> subs;
             {
-                std::lock_guard<std::mutex> lock(mutex_);
+                std::lock_guard<std::mutex> lk(mutex_);
                 poll_items.reserve(subscribers_.size());
-                names.reserve(subscribers_.size());
-
-                for (auto& kv : subscribers_) {
-                    poll_items.push_back({ static_cast<void*>(*kv.second.socket),
-                                           0, ZMQ_POLLIN, 0 });
-                    names.push_back(kv.first);
+                subs.reserve(subscribers_.size());
+                for (auto & sub : subscribers_) {
+                    poll_items.push_back({ static_cast<void*>(*sub.socket), 0, ZMQ_POLLIN, 0 });
+                    subs.push_back(&sub);
                 }
             }
 
-            if (poll_items.empty()) {
-                std::this_thread::sleep_for(std::chrono::milliseconds(20));
-                continue;
-            }
-
-            zmq::poll(poll_items.data(), poll_items.size(), 50);
-
+            zmq::poll(poll_items.data(), poll_items.size(), std::chrono::milliseconds(100)); // no lock
             for (size_t i = 0; i < poll_items.size(); ++i) {
                 if (poll_items[i].revents & ZMQ_POLLIN) {
-                    auto& name = names[i];
-
+                    auto& sub = subs[i];
                     zmq::message_t msg;
-                    {
-                        std::lock_guard<std::mutex> lock(mutex_);
-                        subscribers_[name].socket->recv(msg, zmq::recv_flags::none);
+                    if(!sub->socket->recv(msg, zmq::recv_flags::none)) {
+                        continue;
                     }
-
-                    ByteView view {
-                        static_cast<const uint8_t*>(msg.data()), msg.size()
-                    };
-
-                    {
-                        std::lock_guard<std::mutex> lock(mutex_);
-                        subscribers_[name].callback(view);
-                    }
+                    ByteView view{(uint8_t*)msg.data(), msg.size()};
+                    sub->callback(view);
                 }
             }
         }
     }
 
 private:
-    zmq::context_t& context_;
+
     NodeInfoManager& node_info_mgr_;
 
-    std::unordered_map<std::string, Subscriber> subscribers_;
+    std::vector<Subscriber> subscribers_;
     std::mutex mutex_;
     std::thread poll_thread_;
     bool is_running_ = false;

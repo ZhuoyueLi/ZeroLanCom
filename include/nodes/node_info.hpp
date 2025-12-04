@@ -14,6 +14,7 @@ namespace lancom {
 
 struct SocketInfo {
     std::string name;
+    std::string ip;
     uint16_t port;
 
     void encode(BinWriter& w) const {
@@ -21,9 +22,10 @@ struct SocketInfo {
         w.write_u16(port);
     }
 
-    static SocketInfo decode(BinReader& r) {
+    static SocketInfo decode(BinReader& r, const std::string& ip) {
         SocketInfo si;
         si.name = r.read_string();
+        si.ip = ip;
         si.port = r.read_u16();
         return si;
     }
@@ -80,17 +82,18 @@ struct NodeInfo {
         uint16_t topics_count = r.read_u16();
         ni.topics.reserve(topics_count);
         for (int i = 0; i < topics_count; i++)
-            ni.topics.push_back(SocketInfo::decode(r));
+            ni.topics.push_back(SocketInfo::decode(r, ni.ip));
 
         uint16_t srv_count = r.read_u16();
         ni.services.reserve(srv_count);
         for (int i = 0; i < srv_count; i++)
-            ni.services.push_back(SocketInfo::decode(r));
+            ni.services.push_back(SocketInfo::decode(r, ni.ip));
 
         return ni;
     }
 
     void printNodeInfo() const {
+        LOG_INFO("-------------------------------------------------------------");
         LOG_INFO("NodeID: {}", nodeID);
         LOG_INFO("InfoID: {}", infoID);
         LOG_INFO("Name: {}", name);
@@ -125,12 +128,12 @@ struct LocalNodeInfo {
     }
 
     void registerTopic(const std::string& name, uint16_t port) {
-        nodeInfo.topics.push_back(SocketInfo{name, port});
+        nodeInfo.topics.push_back(SocketInfo{name, nodeInfo.ip, port});
         nodeInfo.infoID++;
     }
 
     void registerServices(const std::string& name, uint16_t port) {
-        nodeInfo.services.push_back(SocketInfo{name, port});
+        nodeInfo.services.push_back(SocketInfo{name, nodeInfo.ip, port});
         nodeInfo.infoID++;
     }
 };
