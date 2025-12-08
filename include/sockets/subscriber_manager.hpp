@@ -12,7 +12,7 @@
 #include "nodes/node_info_manager.hpp"
 #include "serialization/serializer.hpp"
 
-namespace lancom {
+namespace zlc {
 
 class SubscriberManager {
 public:
@@ -153,4 +153,4 @@ private:
     bool is_running_ = false;
 };
 
-} // namespace lancom
+} // namespace zlc

@@ -12,7 +12,7 @@
 #include <spdlog/async.h>
 #include <spdlog/async_logger.h>
 
-namespace lancom {
+namespace zlc {
 
 // Log levels for unified control
 enum class LogLevel {

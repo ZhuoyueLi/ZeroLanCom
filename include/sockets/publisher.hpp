@@ -9,30 +9,30 @@
 #include "utils/logger.hpp"
 #include "serialization/serializer.hpp"
 
-namespace lancom {
+namespace zlc {
 
 template<typename T>
-class LanComPublisher {
+class Publisher {
 public:
     // Create a new publisher
-    LanComPublisher(
+    Publisher(
         const std::string& topic_name,
         bool with_local_namespace = false) {
         std::string full_topic_name = with_local_namespace ?
             "lc.local." + topic_name : topic_name;
         socket_ = std::make_unique<zmq::socket_t>(
             ZmqContext::instance(), zmq::socket_type::pub);
-        const std::string address = LanComNode::instance().GetIP();
+        const std::string address = ZeroLanComNode::instance().GetIP();
         socket_->bind("tcp://" + address + ":0");
-        LOG_INFO("[LanComPublisher] Publisher for topic '{}' bound to port {}",
+        LOG_INFO("[Publisher] Publisher for topic '{}' bound to port {}",
                  full_topic_name, getBoundPort(*socket_));
         port_ = getBoundPort(*socket_);
-        LanComNode::instance().registerTopic(
+        ZeroLanComNode::instance().registerTopic(
             full_topic_name, static_cast<uint16_t>(port_)
     );
     };
     // Destructor
-    ~LanComPublisher() = default;
+    ~Publisher() = default;
     
     // Publish methods for different types
     void publish(const T& msg) {
@@ -49,4 +49,4 @@ public:
     int port_;
 };
 
-} // namespace lancom
+} // namespace zlc

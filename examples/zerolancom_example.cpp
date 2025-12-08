@@ -1,7 +1,7 @@
-#include "lancom_node.hpp"
+#include "zerolancom_node.hpp"
 #include "utils/logger.hpp"
-#include "sockets/lancom_publisher.hpp"
-#include "sockets/lancom_client.hpp"
+#include "sockets/publisher.hpp"
+#include "sockets/client.hpp"
 
 void topicCallback(const std::string& msg) {
     LOG_INFO("Received message on subscribed topic: {}", msg);
@@ -14,20 +14,20 @@ std::string serviceHandler(const std::string& request) {
 
 int main() {
     //initialize logger
-    lancom::Logger::init(false); //true to enable file logging
-    lancom::Logger::setLevel(lancom::LogLevel::INFO);
-    lancom::LanComNode& node = lancom::LanComNode::init("TestNode", "127.0.0.1");
+    zlc::Logger::init(false); //true to enable file logging
+    zlc::Logger::setLevel(zlc::LogLevel::INFO);
+    zlc::ZeroLanComNode& node = zlc::ZeroLanComNode::init("TestNode", "127.0.0.1");
     node.registerServiceHandler("EchoService", serviceHandler);
     node.registerSubscriber<std::string>("TestTopic", topicCallback);
-    lancom::LanComPublisher<std::string> publisher("TestTopic");
+    zlc::Publisher<std::string> publisher("TestTopic");
     node.registerServiceHandler("EchoService2", serviceHandler);
-    lancom::LanComClient::waitForService("EchoService");
+    zlc::Client::waitForService("EchoService");
     std::string response = "";
-    lancom::LanComClient::request<std::string, std::string>("EchoService", "Hello Service", response);
+    zlc::Client::request<std::string, std::string>("EchoService", "Hello Service", response);
     try
     {
         while (true) {
-            publisher.publish("Hello, LanCom!");
+            publisher.publish("Hello, ZeroLanCom!");
             LOG_INFO("Published message to TestTopic");
             node.sleep(1000);
         }

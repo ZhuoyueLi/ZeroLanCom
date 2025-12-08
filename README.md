@@ -39,5 +39,5 @@ Clone and build:
 ```bash
 mkdir build && cd build
 cmake ..
-make
+make install
 ```

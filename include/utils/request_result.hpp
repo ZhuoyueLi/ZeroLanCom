@@ -3,9 +3,9 @@
 #include <string>
 #include <vector>
 
-namespace lancom {
+namespace zlc {
 
-namespace LanComResponseCode {
+namespace ResponseCode {
     constexpr std::string_view SUCCESS        = "SUCCESS";
     constexpr std::string_view FAIL           = "FAIL";
     constexpr std::string_view INVALID_ARG    = "INVALID_ARG";
@@ -29,7 +29,7 @@ public:
     // Human-readable short description for the code
     static const char* description(const std::string& code);
 
-    std::string code { std::string(LanComResponseCode::SUCCESS) };
+    std::string code { std::string(ResponseCode::SUCCESS) };
     std::vector<uint8_t> payload;
 };
 

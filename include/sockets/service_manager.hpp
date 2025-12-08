@@ -13,7 +13,7 @@
 #include "utils/request_result.hpp"
 #include "serialization/serializer.hpp"
 
-namespace lancom {
+namespace zlc {
 class ServiceManager {
 public:
     int service_port_;
@@ -103,15 +103,15 @@ public:
             // std::vector<uint8_t> detail = protocol::encode(err);
             // out.insert(out.end(), detail.begin(), detail.end());
             // response = std::move(out);
-            response.code = LanComResponseCode::FAIL;
+            response.code = ResponseCode::FAIL;
             return;
         }
-        response.code = LanComResponseCode::SUCCESS;
+        response.code = ResponseCode::SUCCESS;
         try {
             response.payload = it->second(payload);
         } catch (const std::exception& e) {
             LOG_ERROR("[ServiceManager] Exception while handling {} service request: {}", service_name, e.what());
-            response.code = LanComResponseCode::FAIL;
+            response.code = ResponseCode::FAIL;
         }
         LOG_INFO("[ServiceManager] Found handler for service {}", service_name);
     }

@@ -2,7 +2,7 @@
 #include <msgpack.hpp>
 #include "serialization/binary_codec.hpp"
 
-namespace lancom {
+namespace zlc {
     template <typename T>
     void encode(const T& obj, ByteBuffer& out) {
         out.size = 0;

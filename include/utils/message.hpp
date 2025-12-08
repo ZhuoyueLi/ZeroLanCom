@@ -5,7 +5,7 @@
 #include <iomanip>
 #include <array>
 
-namespace lancom {
+namespace zlc {
 
 
 inline std::string generateUUID() {

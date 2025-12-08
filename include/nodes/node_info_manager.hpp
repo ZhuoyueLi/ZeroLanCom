@@ -9,7 +9,7 @@
 #include "utils/logger.hpp"
 
 
-namespace lancom {
+namespace zlc {
 
 class NodeInfoManager {
 private:
@@ -54,10 +54,6 @@ public:
         std::shared_lock lock(data_mutex_);
         return checkNodeInfoIDUnlocked(nodeID, infoID);
     }
-
-    // bool check_multicast_message(const std::string& nodeID, uint32_t infoID) const {
-    //     return  checkNodeID(nodeID) && checkNodeInfoID(nodeID, infoID);
-    // }
 
     void removeNode(const std::string& nodeID) {
         std::unique_lock lock(data_mutex_);
@@ -152,4 +148,4 @@ public:
 
 };
 
-} // namespace lancom
+} // namespace zlc

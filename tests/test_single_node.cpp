@@ -9,14 +9,14 @@
 
 TEST(LanComTest, BasicPubSubAndService)
 {
-    using namespace lancom;
+    using namespace zlc;
 
     // Store callback result
     std::string received_topic_msg;
     std::string received_service_resp;
 
     // ---- Create node ----
-    LanComNode& node = LanComNode::init("TestNode", "127.0.0.1");
+    ZeroLanComNode& node = ZeroLanComNode::init("TestNode", "127.0.0.1");
 
     // ---- Register Topic Callback ----
     node.registerSubscriber<std::string>("TestTopic", topicCallback);
@@ -25,16 +25,16 @@ TEST(LanComTest, BasicPubSubAndService)
     node.registerServiceHandler("EchoService", serviceHandler);
 
     // ---- Publisher ----
-    LanComPublisher<std::string> publisher("TestTopic");
+    Publisher<std::string> publisher("TestTopic");
 
     // ---- Service Call ----
-    LanComClient::waitForService("EchoService");
-    LanComClient::request<const std::string&, std::string>(
+    Client::waitForService("EchoService");
+    Client::request<const std::string&, std::string>(
         "EchoService", "Hello Service", received_service_resp
     );
 
     // ---- Publish message ----
-    publisher.publish("Hello, LanCom!");
+    publisher.publish("Hello, ZeroLanCom!");
 
     // Allow some time for async message passing
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
@@ -43,5 +43,5 @@ TEST(LanComTest, BasicPubSubAndService)
     EXPECT_EQ(received_service_resp, "Hello Service");
 
     // ---- Check topic callback ----
-    EXPECT_EQ(received_topic_msg, "Hello, LanCom!");
+    EXPECT_EQ(received_topic_msg, "Hello, ZeroLanCom!");
 }

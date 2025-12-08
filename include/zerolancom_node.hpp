@@ -8,35 +8,35 @@
 #include <thread>
 #include <chrono>
 
-namespace lancom {
+namespace zlc {
 
-class LanComNode {
+class ZeroLanComNode {
 public:
 
-static LanComNode& init(
+static ZeroLanComNode& init(
     const std::string& name,
      const std::string& ip,
-      const lancom::LogLevel log_level = lancom::LogLevel::INFO) 
+      const zlc::LogLevel log_level = zlc::LogLevel::INFO) 
 {
     Logger::init(false);
     Logger::setLevel(log_level);
     std::call_once(flag_, [&]() {
-        instance_.reset(new LanComNode(name, ip));
+        instance_.reset(new ZeroLanComNode(name, ip));
     });
     return *instance_;
 }
 
-static LanComNode& instance() {
+static ZeroLanComNode& instance() {
     if (!instance_) {
-        throw std::runtime_error("LanComNode not initialized!");
+        throw std::runtime_error("ZeroLanComNode not initialized!");
     }
     return *instance_;
 }
 
-LanComNode(const LanComNode&) = delete;
-LanComNode& operator=(const LanComNode&) = delete;
+ZeroLanComNode(const ZeroLanComNode&) = delete;
+ZeroLanComNode& operator=(const ZeroLanComNode&) = delete;
 
-LanComNode(const std::string& name,
+ZeroLanComNode(const std::string& name,
     const std::string& ip,
     const std::string& group="224.0.0.1",
     int groupPort=7720)
@@ -52,7 +52,7 @@ LanComNode(const std::string& name,
         subscriberManager.start();
     }
 
-    ~LanComNode() {
+    ~ZeroLanComNode() {
         stop();
     }
 
@@ -132,9 +132,9 @@ LanComNode(const std::string& name,
     bool running = true;
     int startZmqServicePort() { return 7000; }
 
-    static inline std::unique_ptr<LanComNode> instance_;
+    static inline std::unique_ptr<ZeroLanComNode> instance_;
     static inline std::once_flag flag_;
 
 };
 
-} // namespace lancom
+} // namespace zlc

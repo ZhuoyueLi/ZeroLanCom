@@ -11,7 +11,7 @@
 #include "nodes/node_info_manager.hpp"
 #include "utils/logger.hpp"
 
-namespace lancom {
+namespace zlc {
 
 class MulticastSender {
 public:
@@ -129,4 +129,4 @@ private:
     std::atomic<bool> running_;
 };
 
-} // namespace lancom
+} // namespace zlc

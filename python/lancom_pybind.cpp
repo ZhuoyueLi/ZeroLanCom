@@ -9,11 +9,11 @@
 
 namespace py = pybind11;
 
-using lancom::LanComNode;
-using lancom::LanComPublisher;
-using lancom::LanComClient;
-using lancom::Logger;
-using lancom::LogLevel;
+using zlc::ZeroLanComNode;
+using zlc::Publisher;
+using zlc::Client;
+using zlc::Logger;
+using zlc::LogLevel;
 
 // Logger functions
 void init_logger(bool to_file) {
@@ -39,26 +39,26 @@ PYBIND11_MODULE(lancom_py, m) {
     m.def("init_logger", &init_logger, py::arg("to_file") = false);
     m.def("set_log_level", &set_log_level);
 
-    // LanComNode
-    py::class_<LanComNode>(m, "LanComNode")
+    // ZeroLanComNode
+    py::class_<ZeroLanComNode>(m, "ZeroLanComNode")
         // C++ static method mapped to Python static method
         .def_static(
             "init",
-            &LanComNode::init,
+            &ZeroLanComNode::init,
             py::arg("name"), py::arg("ip"),
             py::return_value_policy::reference,  // Return reference, consistent with C++
-            "Initialize and get global LanComNode instance"
+            "Initialize and get global ZeroLanComNode instance"
         )
         .def(
             "sleep",
-            &LanComNode::sleep,
+            &ZeroLanComNode::sleep,
             py::arg("ms"),
             "Sleep for given milliseconds"
         )
         // Convert Python function to C++ callback
         .def(
             "register_service_handler",
-            [](LanComNode& self,
+            [](ZeroLanComNode& self,
                const std::string& service_name,
                py::function handler) {
                 // Wrap Python callback into std::function<std::string(const std::string&)>
@@ -77,7 +77,7 @@ PYBIND11_MODULE(lancom_py, m) {
         )
         .def(
             "register_subscriber",
-            [](LanComNode& self,
+            [](ZeroLanComNode& self,
                const std::string& topic,
                py::function callback) {
                 self.registerSubscriber<std::string>(
@@ -94,18 +94,18 @@ PYBIND11_MODULE(lancom_py, m) {
         );
 
     // Publisher: only bind std::string version for now
-    py::class_<LanComPublisher<std::string>>(m, "StringPublisher")
+    py::class_<Publisher<std::string>>(m, "StringPublisher")
         .def(py::init<const std::string&>(),
              py::arg("topic"))
         .def("publish",
-             &LanComPublisher<std::string>::publish,
+             &Publisher<std::string>::publish,
              py::arg("msg"));
 
     // Client: wait for service & request
-    py::class_<LanComClient>(m, "LanComClient")
+    py::class_<Client>(m, "Client")
         .def_static(
             "wait_for_service",
-            &LanComClient::waitForService,
+            &Client::waitForService,
             py::arg("service_name"),
             "Block until service is available"
         )
@@ -114,7 +114,7 @@ PYBIND11_MODULE(lancom_py, m) {
             [](const std::string& service_name,
                const std::string& request) {
                 std::string response;
-                LanComClient::request<std::string, std::string>(
+                Client::request<std::string, std::string>(
                     service_name, request, response
                 );
                 return response;

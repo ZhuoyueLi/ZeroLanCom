@@ -10,7 +10,7 @@
 // SocketInfo
 // =======================
 
-namespace lancom {
+namespace zlc {
 
 struct SocketInfo {
     std::string name;

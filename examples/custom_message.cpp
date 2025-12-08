@@ -1,8 +1,8 @@
 #include <msgpack.hpp>
-#include "lancom_node.hpp"
+#include "zerolancom_node.hpp"
 #include "utils/logger.hpp"
-#include "sockets/lancom_publisher.hpp"
-#include "sockets/lancom_client.hpp"
+#include "sockets/publisher.hpp"
+#include "sockets/client.hpp"
 
 void topicCallback(const std::string& msg) {
     LOG_INFO("Received message on subscribed topic: {}", msg);
@@ -16,14 +16,12 @@ struct CustomMessage
     MSGPACK_DEFINE_MAP(count, name, data);
 };
 
-
-
 int main() {
     //initialize logger
-    lancom::Logger::init(false); //true to enable file logging
-    lancom::Logger::setLevel(lancom::LogLevel::INFO);
-    lancom::LanComNode& node = lancom::LanComNode::init("CustomMessageNode", "127.0.0.1");
-    lancom::LanComPublisher<CustomMessage> publisher("CustomMessage");
+    zlc::Logger::init(false); //true to enable file logging
+    zlc::Logger::setLevel(zlc::LogLevel::INFO);
+    zlc::ZeroLanComNode& node = zlc::ZeroLanComNode::init("CustomMessageNode", "127.0.0.1");
+    zlc::Publisher<CustomMessage> publisher("CustomMessage");
     try
     {
         int counter = 0;
