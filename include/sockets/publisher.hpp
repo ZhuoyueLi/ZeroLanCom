@@ -41,7 +41,7 @@ public:
         socket_->send(zmq::buffer(out.data, out.size), zmq::send_flags::none);
     };
     
-    // Implement shutdown
+    // TODO: Implement shutdown
     void on_shutdown();
     
     // Socket reference

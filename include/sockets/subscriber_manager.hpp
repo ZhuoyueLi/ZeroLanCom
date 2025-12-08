@@ -143,6 +143,8 @@ private:
         }
     }
 
+    // TODO: remove subscriber functionality
+
 private:
 
     NodeInfoManager& node_info_mgr_;

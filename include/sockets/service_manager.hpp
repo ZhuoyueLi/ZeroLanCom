@@ -167,6 +167,7 @@ public:
         ServiceManager(ServiceManager&&) = default;
         ServiceManager& operator=(ServiceManager&&) = default;
 
+        // TODO: remove service functionality
 
     private:
         std::unordered_map<std::string, std::function<std::vector<uint8_t>(const ByteView&)>> handlers_;
