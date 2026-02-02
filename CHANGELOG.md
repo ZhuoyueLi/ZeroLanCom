@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.2] - 2026-02-02
+
+### Changed
+
+- **Include cleanup**: Removed unnecessary includes across the codebase to reduce compilation dependencies and improve build times
+  - Removed unused `<iostream>`, `<chrono>`, `<algorithm>`, `<cstring>`, `<thread>` includes from various source files
+  - Removed unused `<mutex>`, `<zmq.hpp>`, and internal header includes from `zerolancom_node.hpp`
+  - Replaced `std::cout`/`std::cerr` usage with `zlc::info()`/`zlc::error()` logger calls for consistency
+
+### Internal
+
+- Standardized logging usage across all source files (no direct iostream usage)
+
 ## [2.0.1] - 2026-01-26
 
 ### Added
