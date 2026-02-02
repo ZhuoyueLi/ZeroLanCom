@@ -1,7 +1,5 @@
 #include "zerolancom/nodes/node_info.hpp"
 
-#include <cstring>
-
 #include "zerolancom/utils/logger.hpp"
 
 namespace zlc

@@ -1,7 +1,5 @@
 #include "zerolancom/sockets/client.hpp"
 #include "zerolancom/nodes/node_info_manager.hpp"
-#include <chrono>
-#include <thread>
 
 namespace zlc
 {

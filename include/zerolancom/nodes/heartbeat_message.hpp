@@ -11,9 +11,9 @@ namespace zlc
 {
 
 // Protocol version constants
-constexpr int32_t ZLC_VERSION_MAJOR = 0;
-constexpr int32_t ZLC_VERSION_MINOR = 1;
-constexpr int32_t ZLC_VERSION_PATCH = 0;
+constexpr int32_t ZLC_VERSION_MAJOR = 2;
+constexpr int32_t ZLC_VERSION_MINOR = 0;
+constexpr int32_t ZLC_VERSION_PATCH = 2;
 
 /**
  * @brief Lightweight heartbeat message for node discovery.

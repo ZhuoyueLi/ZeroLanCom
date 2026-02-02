@@ -2,15 +2,13 @@
 #include "zerolancom/nodes/zerolancom_node.hpp"
 
 #include <chrono>
-#include <iostream>
 #include <thread>
 
 namespace zlc
 {
 
 void init(const std::string &node_name, const std::string &ip_address,
-          const std::string &group, int groupPort,
-          const std::string &groupName)
+          const std::string &group, int groupPort, const std::string &groupName)
 {
   Logger::init(false);
   Logger::setLevel(LogLevel::INFO);

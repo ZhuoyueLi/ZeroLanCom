@@ -78,8 +78,6 @@ public:
     {
       workers_.emplace_back([this]() { workerLoop(); });
     }
-
-    zlc::info("[ThreadPool] Started {} worker threads", num_threads_);
   }
 
   /**

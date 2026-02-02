@@ -1,7 +1,5 @@
 #include "zerolancom/nodes/node_info_manager.hpp"
 
-#include <iostream>
-
 #include <msgpack.hpp>
 #include <zmq.hpp>
 
@@ -217,7 +215,7 @@ void NodeInfoManager::processHeartbeat(const HeartbeatMessage &heartbeat,
   }
   catch (const std::exception &e)
   {
-    std::cerr << "Error processing heartbeat: " << e.what() << "\n";
+    zlc::error("Error processing heartbeat: {}", e.what());
   }
 }
 

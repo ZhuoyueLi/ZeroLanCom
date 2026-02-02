@@ -21,9 +21,8 @@ SubscriberManager::~SubscriberManager()
 
 void SubscriberManager::start()
 {
-  poll_task_ =
-      std::make_unique<PeriodicTask>([this]() { this->pollOnce(); }, 100,
-                                     ThreadPool::instance()); // Poll every 100ms
+  poll_task_ = std::make_unique<PeriodicTask>([this]() { this->pollOnce(); }, 1,
+                                              ThreadPool::instance()); // Poll every 1ms
 
   poll_task_->start();
 }
