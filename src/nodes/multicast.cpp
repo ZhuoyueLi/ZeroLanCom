@@ -1,8 +1,6 @@
 #include "zerolancom/nodes/multicast.hpp"
 
 #include <arpa/inet.h>
-#include <chrono>
-#include <iostream>
 #include <unistd.h>
 
 #include "zerolancom/utils/exception.hpp"

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <future>
-#include <iostream>
 #include <thread>
 
 #include "zerolancom/utils/thread_pool.hpp"
@@ -55,8 +54,6 @@ public:
 
     // Use thread pool to enqueue the loop
     pool_->enqueue([this]() { runLoop(); });
-
-    zlc::info("[PeriodicTask] Started periodic task (interval={}ms)", interval_ms_);
   }
 
   /**

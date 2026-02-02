@@ -15,7 +15,7 @@ ZeroLanComNode::ZeroLanComNode(const std::string &name, const std::string &ip,
                                const std::string &group, int groupPort,
                                const std::string &groupName)
 {
-  ThreadPool::initExternal(4); // 4 worker threads
+  ThreadPool::initExternal(5); // 5 worker threads
   ZMQContext::initExternal();
   NodeInfoManager::initExternal(name, ip);
   ServiceManager::initExternal(ip);
@@ -71,8 +71,8 @@ void ZeroLanComNode::stop()
   ZMQContext::destroy();
   ThreadPool::destroy();
   // Shutdown logger before destroying singletons to avoid segfault during global dtors
+  zlc::info("[ZeroLanComNode] Shutdown complete.");
   Logger::shutdown();
-  std::cout << "[ZeroLanComNode] Shutdown complete." << std::endl;
 }
 
 bool ZeroLanComNode::isRunning() const
