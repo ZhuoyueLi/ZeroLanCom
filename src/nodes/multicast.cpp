@@ -1,6 +1,8 @@
 #include "zerolancom/nodes/multicast.hpp"
 
 #include <arpa/inet.h>
+#include <chrono>
+#include <thread>
 #include <unistd.h>
 
 #include "zerolancom/utils/exception.hpp"
@@ -44,23 +46,30 @@ MulticastSender::~MulticastSender()
 
 void MulticastSender::start()
 {
-  heartbeat_task_ = std::make_unique<PeriodicTask>(
-      [this]()
-      {
-        auto msg = nodeInfoManager_->createHeartbeat();
-        auto bytes = msg.encode();
-        this->sendHeartbeat(bytes);
-      },
-      1000, ThreadPool::instance()); // Send every 1000ms
-
-  heartbeat_task_->start();
+  running_ = true;
+  thread_ = std::thread([this]() { this->run(); });
 }
 
 void MulticastSender::stop()
 {
-  if (heartbeat_task_)
+  if (running_)
   {
-    heartbeat_task_->stop();
+    running_ = false;
+    if (thread_.joinable())
+    {
+      thread_.join();
+    }
+  }
+}
+
+void MulticastSender::run()
+{
+  while (running_)
+  {
+    auto msg = nodeInfoManager_->createHeartbeat();
+    auto bytes = msg.encode();
+    sendHeartbeat(bytes);
+    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
   }
 }
 
@@ -109,57 +118,68 @@ MulticastReceiver::~MulticastReceiver()
 
 void MulticastReceiver::start()
 {
-  receive_task_ = std::make_unique<PeriodicTask>(
-      [this]()
-      {
-        Bytes buf(1024);
-        sockaddr_in src{};
-        socklen_t slen = sizeof(src);
-
-        int n = recvfrom(sock_, buf.data(), static_cast<int>(buf.size()), 0,
-                         reinterpret_cast<sockaddr *>(&src), &slen);
-
-        if (n <= 0)
-          return;
-
-        std::string nodeIP = inet_ntoa(src.sin_addr);
-
-        // Check if in same subnet
-        if (!isInSameSubnet(localIP_, nodeIP))
-          return;
-
-        try
-        {
-          HeartbeatMessage heartbeat =
-              HeartbeatMessage::decode(buf.data(), static_cast<size_t>(n));
-
-          // Filter by group name
-          if (heartbeat.group_name != groupName_)
-            return;
-
-          // Ignore own heartbeat
-          if (heartbeat.node_id == nodeInfoManager_->nodeID())
-            return;
-
-          nodeInfoManager_->processHeartbeat(heartbeat, nodeIP);
-          nodeInfoManager_->checkHeartbeats();
-        }
-        catch (const std::exception &e)
-        {
-          warn("[MulticastReceiver] Failed to decode heartbeat from {}: {}", nodeIP,
-               e.what());
-        }
-      },
-      100, ThreadPool::instance()); // Poll every 100ms
-
-  receive_task_->start();
+  running_ = true;
+  thread_ = std::thread([this]() { this->run(); });
 }
 
 void MulticastReceiver::stop()
 {
-  if (receive_task_)
+  if (running_)
   {
-    receive_task_->stop();
+    running_ = false;
+    if (thread_.joinable())
+    {
+      thread_.join();
+    }
+  }
+}
+
+void MulticastReceiver::run()
+{
+  while (running_)
+  {
+    Bytes buf(1024);
+    sockaddr_in src{};
+    socklen_t slen = sizeof(src);
+
+    int n = recvfrom(sock_, buf.data(), static_cast<int>(buf.size()), 0,
+                     reinterpret_cast<sockaddr *>(&src), &slen);
+
+    if (n <= 0)
+    {
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      continue;
+    }
+
+    std::string nodeIP = inet_ntoa(src.sin_addr);
+
+    // Check if in same subnet
+    if (!isInSameSubnet(localIP_, nodeIP))
+      continue;
+
+    try
+    {
+      HeartbeatMessage heartbeat =
+          HeartbeatMessage::decode(buf.data(), static_cast<size_t>(n));
+
+      // Filter by group name
+      if (heartbeat.group_name != groupName_)
+        continue;
+
+      // Ignore own heartbeat
+      if (heartbeat.node_id == nodeInfoManager_->nodeID())
+        continue;
+
+      nodeInfoManager_->processHeartbeat(heartbeat, nodeIP);
+      nodeInfoManager_->checkHeartbeats();
+    }
+    catch (const std::exception &e)
+    {
+      warn("[MulticastReceiver] Failed to decode heartbeat from {}: {}", nodeIP,
+           e.what());
+    }
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 }
 

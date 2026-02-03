@@ -5,12 +5,11 @@
 #include <memory>
 #include <netinet/in.h>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "zerolancom/nodes/heartbeat_message.hpp"
 #include "zerolancom/nodes/node_info_manager.hpp"
-#include "zerolancom/utils/periodic_task.hpp"
-#include "zerolancom/utils/thread_pool.hpp"
 
 namespace zlc
 {
@@ -26,10 +25,12 @@ public:
   void stop();
 
 private:
+  void run();
   void sendHeartbeat(const Bytes &msg);
   int sock_;
   sockaddr_in addr_{};
-  std::unique_ptr<PeriodicTask> heartbeat_task_;
+  std::thread thread_;
+  std::atomic<bool> running_{false};
   NodeInfoManager *nodeInfoManager_;
   std::string groupName_;
 };
@@ -45,10 +46,12 @@ public:
   void stop();
 
 private:
+  void run();
   int sock_;
   std::string localIP_;
   std::string groupName_;
-  std::unique_ptr<PeriodicTask> receive_task_;
+  std::thread thread_;
+  std::atomic<bool> running_{false};
   NodeInfoManager *nodeInfoManager_;
 };
 

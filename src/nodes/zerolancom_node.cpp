@@ -15,7 +15,8 @@ ZeroLanComNode::ZeroLanComNode(const std::string &name, const std::string &ip,
                                const std::string &group, int groupPort,
                                const std::string &groupName)
 {
-  ThreadPool::initExternal(5); // 5 worker threads
+  // ThreadPool is used only for processing subscriber messages
+  ThreadPool::initExternal(4);
   ZMQContext::initExternal();
   NodeInfoManager::initExternal(name, ip);
   ServiceManager::initExternal(ip);

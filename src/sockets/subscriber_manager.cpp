@@ -1,5 +1,8 @@
 #include "zerolancom/sockets/subscriber_manager.hpp"
 
+#include <algorithm>
+#include <chrono>
+
 namespace zlc
 {
 
@@ -21,17 +24,28 @@ SubscriberManager::~SubscriberManager()
 
 void SubscriberManager::start()
 {
-  poll_task_ = std::make_unique<PeriodicTask>([this]() { this->pollOnce(); }, 1,
-                                              ThreadPool::instance()); // Poll every 1ms
-
-  poll_task_->start();
+  running_ = true;
+  thread_ = std::thread([this]() { this->run(); });
 }
 
 void SubscriberManager::stop()
 {
-  if (poll_task_)
+  if (running_)
   {
-    poll_task_->stop();
+    running_ = false;
+    if (thread_.joinable())
+    {
+      thread_.join();
+    }
+  }
+}
+
+void SubscriberManager::run()
+{
+  while (running_)
+  {
+    pollOnce();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 }
 
@@ -155,9 +169,18 @@ void SubscriberManager::pollOnce()
           continue;
         }
 
-        ByteView view{static_cast<const uint8_t *>(msg.data()), msg.size()};
+        // Copy message data for ThreadPool dispatch
+        Bytes data(static_cast<const uint8_t *>(msg.data()),
+                   static_cast<const uint8_t *>(msg.data()) + msg.size());
+        auto callback = subs[i]->callback;
 
-        subs[i]->callback(view);
+        // Dispatch callback to ThreadPool to avoid blocking poll loop
+        ThreadPool::instance().enqueue(
+            [callback, data = std::move(data)]()
+            {
+              ByteView view{data.data(), data.size()};
+              callback(view);
+            });
       }
     }
   }
