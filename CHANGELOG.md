@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.3] - 2026-02-03
+
+### Changed
+
+- **Simplified thread management**: Replaced `PeriodicTask` abstraction with direct `std::thread` + `std::atomic<bool>` management in all polling components
+  - `ServiceManager`: Dedicated thread for RPC request polling (100ms interval)
+  - `SubscriberManager`: Dedicated thread for topic message polling
+  - `MulticastSender`: Dedicated thread for heartbeat transmission (1000ms interval)
+  - `MulticastReceiver`: Dedicated thread for heartbeat reception (100ms interval)
+
+### Removed
+
+- **ThreadPool**: Removed `ThreadPool` class and all related infrastructure - polling threads now managed directly by each component
+- **PeriodicTask**: Removed `PeriodicTask` helper class - replaced with simpler inline thread loops
+
+### Internal
+
+- Simplified component lifecycle with direct thread `start()`/`stop()` patterns
+- Reduced code complexity by eliminating thread pool indirection
+
+---
+
 ## [2.0.2] - 2026-02-02
 
 ### Changed
@@ -41,10 +63,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Critical segfault fix**: Fixed `Singleton::destroy()` method that was not properly destroying managed singletons (used by `ZeroLanComNode`). The bug caused destructors to only run during `__cxa_finalize` when spdlog was already destroyed, leading to segfaults
 - **Default argument duplication**: Removed duplicate default arguments from `zerolancom.cpp` implementation (C++ requires defaults only in declarations)
-
-### Removed
-
-- Removed verbose shutdown log messages from `PeriodicTask` and `ThreadPool` to reduce log noise
 
 ### Internal
 

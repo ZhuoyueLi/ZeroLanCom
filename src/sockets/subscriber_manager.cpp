@@ -1,5 +1,8 @@
 #include "zerolancom/sockets/subscriber_manager.hpp"
 
+#include <algorithm>
+#include <chrono>
+
 namespace zlc
 {
 
@@ -21,17 +24,27 @@ SubscriberManager::~SubscriberManager()
 
 void SubscriberManager::start()
 {
-  poll_task_ = std::make_unique<PeriodicTask>([this]() { this->pollOnce(); }, 1,
-                                              ThreadPool::instance()); // Poll every 1ms
-
-  poll_task_->start();
+  running_ = true;
+  thread_ = std::thread([this]() { this->run(); });
 }
 
 void SubscriberManager::stop()
 {
-  if (poll_task_)
+  if (running_)
   {
-    poll_task_->stop();
+    running_ = false;
+    if (thread_.joinable())
+    {
+      thread_.join();
+    }
+  }
+}
+
+void SubscriberManager::run()
+{
+  while (running_)
+  {
+    pollOnce();
   }
 }
 
@@ -133,6 +146,8 @@ void SubscriberManager::pollOnce()
 
     {
       std::lock_guard<std::mutex> lock(mutex_);
+      if (subscribers_.empty()) return;
+      
       poll_items.reserve(subscribers_.size());
       subs.reserve(subscribers_.size());
 
@@ -143,37 +158,42 @@ void SubscriberManager::pollOnce()
       }
     }
 
-    zmq::poll(poll_items.data(), poll_items.size(), std::chrono::milliseconds(10));
+    int rc = zmq::poll(poll_items.data(), poll_items.size(), std::chrono::milliseconds(100));
+    if (rc <= 0) return;
 
     for (size_t i = 0; i < poll_items.size(); ++i)
     {
       if (poll_items[i].revents & ZMQ_POLLIN)
       {
-        zmq::message_t msg;
-        if (!subs[i]->socket->recv(msg, zmq::recv_flags::none))
+        zmq::message_t last_msg;
+        zmq::message_t tmp_msg;
+        bool has_data = false;
+
+        while (subs[i]->socket->recv(tmp_msg, zmq::recv_flags::dontwait))
         {
-          continue;
+          last_msg = std::move(tmp_msg);
+          has_data = true;
         }
 
-        ByteView view{static_cast<const uint8_t *>(msg.data()), msg.size()};
-
-        subs[i]->callback(view);
+        if (has_data)
+        {
+          ByteView view{static_cast<const uint8_t*>(last_msg.data()), last_msg.size()};
+          
+          if (subs[i]->callback) {
+            subs[i]->callback(view);
+          }
+        }
       }
     }
   }
   catch (const zmq::error_t &e)
   {
-    if (e.num() == ETERM)
-    {
-      zlc::info("[SubscriberManager] Context terminated during poll");
-      return;
-    }
+    if (e.num() == ETERM) return;
     zlc::error("[SubscriberManager] ZMQ error: {}", e.what());
   }
   catch (const std::exception &e)
   {
-    zlc::info("[SubscriberManager] Poll exception: {}", e.what());
+    zlc::error("[SubscriberManager] Exception: {}", e.what());
   }
 }
-
 } // namespace zlc

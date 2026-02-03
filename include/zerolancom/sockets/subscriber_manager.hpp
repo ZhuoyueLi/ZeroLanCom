@@ -1,10 +1,11 @@
 #pragma once
 
-#include <algorithm>
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -15,8 +16,6 @@
 #include "zerolancom/nodes/node_info_manager.hpp"
 #include "zerolancom/serialization/serializer.hpp"
 #include "zerolancom/utils/logger.hpp"
-#include "zerolancom/utils/periodic_task.hpp"
-#include "zerolancom/utils/thread_pool.hpp"
 #include "zerolancom/utils/zmq_utils.hpp"
 
 namespace zlc
@@ -102,7 +101,10 @@ private:
   std::vector<Subscriber> subscribers_;
   std::mutex mutex_;
 
-  std::unique_ptr<PeriodicTask> poll_task_;
+  std::thread thread_;
+  std::atomic<bool> running_{false};
+
+  void run();
 
   void _registerTopicSubscriber(const std::string &topicName,
                                 const std::function<void(const ByteView &)> &callback);

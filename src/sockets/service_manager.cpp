@@ -1,4 +1,7 @@
 #include "zerolancom/sockets/service_manager.hpp"
+
+#include <chrono>
+
 #include "zerolancom/utils/exception.hpp"
 
 namespace zlc
@@ -21,18 +24,28 @@ ServiceManager::~ServiceManager()
 
 void ServiceManager::start()
 {
-  poll_task_ =
-      std::make_unique<PeriodicTask>([this]() { this->pollOnce(); }, 100,
-                                     ThreadPool::instance()); // Poll every 100ms
-
-  poll_task_->start();
+  running_ = true;
+  thread_ = std::thread([this]() { this->run(); });
 }
 
 void ServiceManager::stop()
 {
-  if (poll_task_)
+  if (running_)
   {
-    poll_task_->stop();
+    running_ = false;
+    if (thread_.joinable())
+    {
+      thread_.join();
+    }
+  }
+}
+
+void ServiceManager::run()
+{
+  while (running_)
+  {
+    pollOnce();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
   }
 }
 
