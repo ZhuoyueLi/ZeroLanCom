@@ -15,8 +15,9 @@ ZeroLanComNode::ZeroLanComNode(const std::string &name, const std::string &ip,
                                const std::string &group, int groupPort,
                                const std::string &groupName)
 {
-  // ThreadPool is used only for processing subscriber messages
-  ThreadPool::initExternal(4);
+  zlc::info("[ZeroLanComNode] Initializing ZeroLanComNode '{}' at {}", name, ip);
+  zlc::info("[ZeroLanComNode] Using multicast group {}:{} with group name '{}'", group,
+            groupPort, groupName);
   ZMQContext::initExternal();
   NodeInfoManager::initExternal(name, ip);
   ServiceManager::initExternal(ip);
@@ -31,7 +32,6 @@ ZeroLanComNode::ZeroLanComNode(const std::string &name, const std::string &ip,
   // Register internal get_node_info service
   registerGetNodeInfoService();
 
-  ThreadPool::instance().start();
   MulticastSender::instance().start();
   MulticastReceiver::instance().start();
   ServiceManager::instance().start();
@@ -60,7 +60,6 @@ void ZeroLanComNode::stop()
   MulticastReceiver::instance().stop();
   ServiceManager::instance().stop();
   SubscriberManager::instance().stop();
-  ThreadPool::instance().stop();
 
   // Destroy in reverse order of initialization, respecting dependencies
   // SubscriberManager subscribes to NodeInfoManager events, so destroy first
@@ -70,7 +69,6 @@ void ZeroLanComNode::stop()
   MulticastSender::destroy();
   NodeInfoManager::destroy();
   ZMQContext::destroy();
-  ThreadPool::destroy();
   // Shutdown logger before destroying singletons to avoid segfault during global dtors
   zlc::info("[ZeroLanComNode] Shutdown complete.");
   Logger::shutdown();

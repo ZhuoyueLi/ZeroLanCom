@@ -33,7 +33,6 @@ endfunction()
 # ----------------------------
 # Unit Tests
 # ----------------------------
-add_zerolancom_test(test_thread_pool test_thread_pool.cpp)
 add_zerolancom_test(test_serialization test_serialization.cpp)
 
 # ----------------------------

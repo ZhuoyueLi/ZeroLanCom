@@ -45,7 +45,6 @@ void SubscriberManager::run()
   while (running_)
   {
     pollOnce();
-    std::this_thread::sleep_for(std::chrono::milliseconds(1));
   }
 }
 
@@ -147,6 +146,8 @@ void SubscriberManager::pollOnce()
 
     {
       std::lock_guard<std::mutex> lock(mutex_);
+      if (subscribers_.empty()) return;
+      
       poll_items.reserve(subscribers_.size());
       subs.reserve(subscribers_.size());
 
@@ -157,46 +158,42 @@ void SubscriberManager::pollOnce()
       }
     }
 
-    zmq::poll(poll_items.data(), poll_items.size(), std::chrono::milliseconds(10));
+    int rc = zmq::poll(poll_items.data(), poll_items.size(), std::chrono::milliseconds(100));
+    if (rc <= 0) return;
 
     for (size_t i = 0; i < poll_items.size(); ++i)
     {
       if (poll_items[i].revents & ZMQ_POLLIN)
       {
-        zmq::message_t msg;
-        if (!subs[i]->socket->recv(msg, zmq::recv_flags::none))
+        zmq::message_t last_msg;
+        zmq::message_t tmp_msg;
+        bool has_data = false;
+
+        while (subs[i]->socket->recv(tmp_msg, zmq::recv_flags::dontwait))
         {
-          continue;
+          last_msg = std::move(tmp_msg);
+          has_data = true;
         }
 
-        // Copy message data for ThreadPool dispatch
-        Bytes data(static_cast<const uint8_t *>(msg.data()),
-                   static_cast<const uint8_t *>(msg.data()) + msg.size());
-        auto callback = subs[i]->callback;
-
-        // Dispatch callback to ThreadPool to avoid blocking poll loop
-        ThreadPool::instance().enqueue(
-            [callback, data = std::move(data)]()
-            {
-              ByteView view{data.data(), data.size()};
-              callback(view);
-            });
+        if (has_data)
+        {
+          ByteView view{static_cast<const uint8_t*>(last_msg.data()), last_msg.size()};
+          
+          if (subs[i]->callback) {
+            subs[i]->callback(view);
+          }
+        }
       }
     }
   }
   catch (const zmq::error_t &e)
   {
-    if (e.num() == ETERM)
-    {
-      zlc::info("[SubscriberManager] Context terminated during poll");
-      return;
-    }
+    if (e.num() == ETERM) return;
     zlc::error("[SubscriberManager] ZMQ error: {}", e.what());
   }
   catch (const std::exception &e)
   {
-    zlc::info("[SubscriberManager] Poll exception: {}", e.what());
+    zlc::error("[SubscriberManager] Exception: {}", e.what());
   }
 }
-
 } // namespace zlc

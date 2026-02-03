@@ -16,7 +16,6 @@
 #include "zerolancom/nodes/node_info_manager.hpp"
 #include "zerolancom/serialization/serializer.hpp"
 #include "zerolancom/utils/logger.hpp"
-#include "zerolancom/utils/thread_pool.hpp"
 #include "zerolancom/utils/zmq_utils.hpp"
 
 namespace zlc
@@ -28,7 +27,6 @@ namespace zlc
  * Design notes:
  * - Automatically discovers publishers via NodeInfoManager callbacks.
  * - Uses one SUB socket per topic.
- * - Callbacks are dispatched via ThreadPool to avoid blocking the poll loop.
  * - Template subscription API must remain header-only.
  */
 class SubscriberManager : public Singleton<SubscriberManager>
