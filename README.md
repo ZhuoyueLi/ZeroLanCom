@@ -31,7 +31,7 @@ ZeroLanCom is header-only on the core logic and extremely easy to integrate into
 Install on Ubuntu:
 
 ```bash
-sudo apt install libzmq3-dev libspdlog-dev
+sudo apt install libzmq3-dev libspdlog-dev libmsgpack-dev
 ```
 
 Clone and build:
